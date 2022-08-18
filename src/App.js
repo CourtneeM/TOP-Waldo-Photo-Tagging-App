@@ -52,7 +52,7 @@ const Wrapper = styled.div`
     height: 60px;
     border: 7px solid green;
     
-    p {
+    p:first-child {
       position: relative;
       top: -20px;
       right: -15px;
@@ -62,15 +62,52 @@ const Wrapper = styled.div`
       background-color: #fff;
       transform: rotate(20deg);
     }
+
+    .correct-choice-float {
+      position: relative;
+      top: -23px;
+      left: -25px;
+      width: 100px;
+      padding: 5px;
+      font-size: 1.2rem;
+      text-align: center;
+      color: green;
+      background-color: #fff;
+      box-shadow: 0 4px 10px 2px #000;
+    }
+
+  }
+
+  .wrong-choice-float {
+    position: absolute;
+    width: 100px;
+    padding: 5px;
+    font-size: 1.2rem;
+    text-align: center;
+    color: red;
+    background-color: #fff;
+    box-shadow: 0 4px 10px 2px #000;
   }
 `;
 
 function App() {
-  const characterCoordinates = {
-    waldo: [640, 450],
-    wizard: [755, 450],
-    wanda: [785, 735],
-    odlaw: [290, 455],
+  const characters = {
+    waldo: {
+      found: false,
+      coordinates: [640, 450]
+    },
+    wizard: {
+      found: false,
+      coordinates: [755, 450]
+    },
+    wanda: {
+      found: false,
+      coordinates: [785, 735]
+    },
+    odlaw: {
+      found: false,
+      coordinates: [290, 455]
+    },
   }
 
   const generateBox = (e) => {
@@ -78,49 +115,95 @@ function App() {
     selectionBox.style.display = 'block';
     selectionBox.style.top = `${e.nativeEvent.offsetY - 30}px`;
     selectionBox.style.left = `${e.nativeEvent.offsetX - 30}px`;
-    // console.log('x: ' + e.nativeEvent.offsetX, 'y: ' + e.nativeEvent.offsetY);
   }
-
   const checkAnswer = (e) => {
-    const [correctX, correctY] = characterCoordinates[e.target.textContent.toLowerCase()];
+    const [correctX, correctY] = characters[e.target.textContent.toLowerCase()].coordinates;
+    const imageContainer = document.querySelector('.image-container');
     const selectionBox = document.getElementById('selection-box');
-    const minOffsetX = Number(selectionBox.style.left.replace('px', ''));
-    const maxOffsetX = Number(selectionBox.style.left.replace('px', '')) + 80;
-    const minOffsetY = Number(selectionBox.style.top.replace('px', ''));
-    const maxOffsetY = Number(selectionBox.style.top.replace('px', '')) + 80;
 
-    if ((minOffsetX < correctX && correctX < maxOffsetX) && (minOffsetY < correctY && correctY < maxOffsetY)) {
-      // place permanent box
-      const imageContainer = document.querySelector('.image-container');
-      const correctBox = document.createElement('div');
-      correctBox.classList.add('correct-selection-box');
-      correctBox.style.top = selectionBox.style.top;
-      correctBox.style.left = selectionBox.style.left;
+    const getUserOffsets = () => {
+      const minOffsetX = Number(selectionBox.style.left.replace('px', ''));
+      const maxOffsetX = Number(selectionBox.style.left.replace('px', '')) + 80;
+      const minOffsetY = Number(selectionBox.style.top.replace('px', ''));
+      const maxOffsetY = Number(selectionBox.style.top.replace('px', '')) + 80;
+      
+      return [minOffsetX, maxOffsetX, minOffsetY, maxOffsetY]; 
+    }
+    const correctChoice = () => {
+      const generateCorrectBox = () => {
+        const correctBox = document.createElement('div');
+        correctBox.classList.add('correct-selection-box');
+        correctBox.style.top = selectionBox.style.top;
+        correctBox.style.left = selectionBox.style.left;
+        
+        return correctBox;
+      }
+      const generateCharacterName = () => {
+        const characterName = document.createElement('p');
+        characterName.textContent = e.target.textContent;
 
-      // display character name next to box
-      const characterName = document.createElement('p');
-      characterName.textContent = e.target.textContent;
+        return characterName;
+      }
+      const generateCorrectChoiceMessage = () => {
+        const correctChoiceMessage = document.createElement('p');
+        correctChoiceMessage.classList.add('correct-choice-float');
+        correctChoiceMessage.textContent = 'Good Job!';
+
+        return correctChoiceMessage;
+      }
+      const markOutCorrectChoice = () => {
+        e.target.style.textDecoration = 'line-through';
+        e.target.style.textColor = '#333';
+        e.target.style.backgroundColor = '#ccc'
+        e.target.style.pointerEvents = 'none';
+      }
+
+      const correctBox = generateCorrectBox();
+      const characterName = generateCharacterName();
+      const correctChoiceMessage = generateCorrectChoiceMessage();
 
       correctBox.appendChild(characterName);
       imageContainer.appendChild(correctBox);
 
+      correctBox.appendChild(correctChoiceMessage);
+      setTimeout(() => correctBox.removeChild(correctChoiceMessage), 2000);
 
-      // give user message about correct choice
-      // display message near box for a few seconds  'good job'
-
-      // mark out correct choice in list of characters
-      e.target.style.textDecoration = 'line-through';
-      e.target.style.textColor = '#333';
-      e.target.style.backgroundColor = '#ccc'
-      e.target.style.pointerEvents = 'none';
-    } else {
-      // if answer is wrong, display message 'try again'
-      // remove selectionBox until user clicks again
-
+      markOutCorrectChoice();
     }
-    console.log(`offsetX: ${minOffsetX}, ${maxOffsetX}`);
-    console.log(`offsetY: ${minOffsetY}, ${maxOffsetY}`);
+
+    const wrongChoice = (e) => {
+      const generateWrongChoiceMessage = () => {
+        const wrongChoiceMessage = document.createElement('p');
+        wrongChoiceMessage.classList.add('wrong-choice-float');
+        wrongChoiceMessage.textContent = 'Try Again';
+
+        return wrongChoiceMessage;
+      }
+
+      const wrongChoiceMessage = generateWrongChoiceMessage();
+      wrongChoiceMessage.style.top = `${Number(selectionBox.style.top.replace('px', '')) + 10}px`;
+      wrongChoiceMessage.style.left = `${Number(selectionBox.style.left.replace('px', '')) - 20}px`;
+
+      imageContainer.appendChild(wrongChoiceMessage);
+      setTimeout(() => imageContainer.removeChild(wrongChoiceMessage), 2000);
+    }
+
+    const [minOffsetX, maxOffsetX, minOffsetY, maxOffsetY] = getUserOffsets();
+
+    if ((minOffsetX < correctX && correctX < maxOffsetX) && (minOffsetY < correctY && correctY < maxOffsetY)) {
+      correctChoice();
+    } else {
+      wrongChoice(e);
+    }
+
+    selectionBox.style.display = 'none';
   }
+  const hideSelectionBox = (() => {
+    document.addEventListener('keydown', (e) => {
+      const selectionBox = document.getElementById('selection-box');
+      if (e.key === 'Escape') selectionBox.style.display = 'none';
+    });
+  })();
 
   return (
     <div>
