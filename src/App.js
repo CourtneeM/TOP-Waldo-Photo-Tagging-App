@@ -102,10 +102,20 @@ const GameStats = styled.div`
     padding-right: 20px;
     border-right: 1px solid #ccc;
   }
+
+  #game-over-message {
+    font-weight: bold;
+    padding-left: 20px;
+    border-left: 1px solid #ccc;
+  }
 `;
 
 function App() {
-  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [timeElapsed, setTimeElapsed] = useState({
+    seconds: 0,
+    minutes: 0,
+    hours: 0,
+  });
   const [characterStatus, setCharacterStatus] = useState({
     waldo: false,
     wizard: false,
@@ -116,15 +126,47 @@ function App() {
 
   useEffect(() => {
     if (!gameOver) {
-      const gameTimer = setInterval(() => setTimeElapsed(timeElapsed + 1), 1000);
+      const gameTimer = setInterval(() => {
+        const timeElapsedCopy = {...timeElapsed};
+        timeElapsedCopy.seconds = Number(timeElapsedCopy.seconds) + 1;
+
+        if (timeElapsedCopy.seconds === 60) {
+          timeElapsedCopy.seconds = 0;
+          timeElapsedCopy.minutes = Number(timeElapsedCopy.minutes) + 1;
+        }
+
+        if (timeElapsedCopy.minutes === 60) {
+          timeElapsedCopy.minutes = 0;
+          timeElapsedCopy.hours = Number(timeElapsedCopy.hours) + 1;
+        }
+
+        setTimeElapsed(timeElapsedCopy);
+      }, 1000);
       return () => clearInterval(gameTimer);
     }
   });
   useEffect(() => {
+    const gameOverEvent = () => {
+      const imageContainer = document.querySelector('img');
+      imageContainer.style.pointerEvents = 'none';
+    }
+
+    const displayGameOverMessage = () => {
+      if (document.getElementById('game-over-message')) return;
+
+      const gameStatsContainer = document.getElementById('game-stats');
+      const gameOverMessage = document.createElement('p');
+      gameOverMessage.id = 'game-over-message';
+      gameOverMessage.textContent = 'You found everyone, congrats!';
+  
+      gameStatsContainer.appendChild(gameOverMessage);
+    }
+
     const checkIfGameover = () => {
       if (Object.keys(characterStatus).every((character) => characterStatus[character])) {
-        console.log('gameover');
         setGameOver(true);
+        gameOverEvent();
+        displayGameOverMessage();
       }
     }
 
@@ -230,19 +272,22 @@ function App() {
     selectionBox.style.display = 'none';
   }
   const displayTimeElapsed = () => {
-    let totalMinutes;
-    let totalSeconds;
+    const totalHours = timeElapsed.hours;
+    const totalMinutes = timeElapsed.minutes;
+    const totalSeconds = timeElapsed.seconds;
 
-    if (timeElapsed < 60) {
-      totalSeconds = Number(timeElapsed);
-    } else {
-      [totalMinutes, totalSeconds] = String((Number(timeElapsed) / 60).toFixed(1)).split('.');
-    }
+    const hoursMessage = totalHours > '1' ? `${totalHours}h ` : totalHours === 1 ? `${totalHours}h ` : null;
+    const minutesMessage = totalMinutes > '1' ? `${totalMinutes}m ` : totalMinutes === 1 ? `${totalMinutes}m ` : totalHours ? '0m ' : null;
+    const secondsMessage = totalSeconds > '1' ? `${totalSeconds}s` : totalSeconds === 1 ? `${totalSeconds}s` : '0s';
 
-    const minutesMessage = totalMinutes > '1' ? `${totalMinutes} minutes, ` : totalMinutes === '1' ? `${totalMinutes} minute, ` : null;
-    const secondsMessage = totalSeconds > '1' ? `${totalSeconds} seconds` : totalSeconds === '1' ? `${totalSeconds} second` : '0 seconds';
-
-    return `${minutesMessage ? minutesMessage + secondsMessage : secondsMessage}`
+    return (
+      hoursMessage ? hoursMessage + minutesMessage + secondsMessage :
+      minutesMessage ? minutesMessage + secondsMessage :
+      secondsMessage
+    );
+  }
+  const displayCharactersFound = () => {
+    return `${Object.values(characterStatus).filter((foundStatus) => foundStatus).length}/${Object.values(characterStatus).length}`;
   }
   const hideSelectionBox = (() => {
     document.addEventListener('keydown', (e) => {
@@ -255,7 +300,7 @@ function App() {
     <div>
       <GameStats id="game-stats">
           <p>Time Elapsed: {displayTimeElapsed()}</p>
-          <p>Characters Found: {Object.values(characterStatus).filter((foundStatus) => foundStatus).length}/{Object.values(characterStatus).length}</p>
+          <p>Characters Found: {displayCharactersFound()}</p>
         </GameStats>
       <Wrapper className='image-container'>
         <img src={beachScene} alt="a" onClick={(e) => generateBox(e)} />
