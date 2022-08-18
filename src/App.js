@@ -109,6 +109,47 @@ const GameStats = styled.div`
     border-left: 1px solid #ccc;
   }
 `;
+const Leaderboards = styled.div`
+  display: none;
+  position: absolute;
+  top: 125px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  margin: 0 auto 40px;
+  padding: 20px;
+  text-align: center;
+  background-color: #fff;
+  border: 1px solid #000;
+  border-radius: 10px;
+
+  > div:nth-child(2) {
+    display: flex;
+    padding: 10px 0;
+    font-weight: bold;
+  }
+
+  p {
+    width: 150px;
+    padding: 5px 0;
+    margin: 0 auto;
+  }
+
+  .leaderboard-stat-container {
+    display: flex;
+    justify-content: center;
+    
+    &:nth-child(odd) {
+      background-color: #eee;
+    }
+  }
+
+  button {
+    margin-top: 15px;
+    padding: 5px 20px;
+    cursor: pointer;
+  }
+`;
 
 function App() {
   const [timeElapsed, setTimeElapsed] = useState({
@@ -123,6 +164,16 @@ function App() {
     odlaw: false,
   });
   const [gameOver, setGameOver] = useState(false);
+  const [leaderboards, setLeaderboards] = useState([
+    { name: 'Bob', time: { hours: 0, minutes: 0, seconds: 7 }},
+    { name: 'Tim', time: { hours: 0, minutes: 0, seconds: 10 }},
+    { name: 'Mary', time: { hours: 0, minutes: 0, seconds: 15 }},
+    { name: 'Jean', time: { hours: 0, minutes: 0, seconds: 16 }},
+    { name: 'Shaun', time: { hours: 0, minutes: 0, seconds: 20 }},
+    { name: 'Robert', time: { hours: 0, minutes: 1, seconds: 0 }},
+    { name: 'Mike', time: { hours: 0, minutes: 1, seconds: 20 }},
+    { name: 'Steve', time: { hours: 1, minutes: 0, seconds: 55 }},
+  ])
 
   useEffect(() => {
     if (!gameOver) {
@@ -150,23 +201,54 @@ function App() {
       const imageContainer = document.querySelector('img');
       imageContainer.style.pointerEvents = 'none';
     }
+    const resetGame = () => {
+      const characterStatusCopy = { ...characterStatus };
+      Object.keys(characterStatusCopy).forEach((key) => characterStatusCopy[key] = false);
 
+      setTimeElapsed({hours: 0, minutes: 0, seconds: 0});
+      setCharacterStatus(characterStatusCopy);
+      setGameOver(false);
+    }
     const displayGameOverMessage = () => {
-      if (document.getElementById('game-over-message')) return;
-
       const gameStatsContainer = document.getElementById('game-stats');
       const gameOverMessage = document.createElement('p');
+      const resetBtn = document.createElement('button');
+
       gameOverMessage.id = 'game-over-message';
       gameOverMessage.textContent = 'You found everyone, congrats!';
-  
-      gameStatsContainer.appendChild(gameOverMessage);
-    }
+      
+      // resetBtn.id = 'reset-btn';
+      // resetBtn.textContent = 'Reset';
+      // resetBtn.addEventListener('click', resetGame);
 
+      [gameOverMessage, resetBtn].forEach((el) => gameStatsContainer.appendChild(el));
+    }
+    const displayLeaderboards = () => {
+      const leaderboardsContainer = document.getElementById('leaderboards');
+      const playersScoresContainer = document.getElementById('players-scores');
+      
+      leaderboardsContainer.style.display = 'block';
+      leaderboards.forEach((stat) => {
+        const statContainer = document.createElement('div');
+        const statName = document.createElement('p');
+        const statTime = document.createElement('p');
+
+        statContainer.classList.add('leaderboard-stat-container');
+
+        statName.textContent = stat.name;
+        statTime.textContent = displayTimeElapsed(stat.time);
+
+        [statName, statTime].forEach((el) => statContainer.appendChild(el));
+        playersScoresContainer.appendChild(statContainer);
+      })
+    }
     const checkIfGameover = () => {
       if (Object.keys(characterStatus).every((character) => characterStatus[character])) {
+        if (gameOver) return;
         setGameOver(true);
         gameOverEvent();
         displayGameOverMessage();
+        displayLeaderboards();
       }
     }
 
@@ -271,10 +353,10 @@ function App() {
 
     selectionBox.style.display = 'none';
   }
-  const displayTimeElapsed = () => {
-    const totalHours = timeElapsed.hours;
-    const totalMinutes = timeElapsed.minutes;
-    const totalSeconds = timeElapsed.seconds;
+  const displayTimeElapsed = (time) => {
+    const totalHours = time.hours;
+    const totalMinutes = time.minutes;
+    const totalSeconds = time.seconds;
 
     const hoursMessage = totalHours > '1' ? `${totalHours}h ` : totalHours === 1 ? `${totalHours}h ` : null;
     const minutesMessage = totalMinutes > '1' ? `${totalMinutes}m ` : totalMinutes === 1 ? `${totalMinutes}m ` : totalHours ? '0m ' : null;
@@ -289,6 +371,10 @@ function App() {
   const displayCharactersFound = () => {
     return `${Object.values(characterStatus).filter((foundStatus) => foundStatus).length}/${Object.values(characterStatus).length}`;
   }
+  const closeLeaderboards = (e) => {
+    e.preventDefault();
+    document.getElementById('leaderboards').style.display = 'none';
+  }
   const hideSelectionBox = (() => {
     document.addEventListener('keydown', (e) => {
       const selectionBox = document.getElementById('selection-box');
@@ -299,9 +385,9 @@ function App() {
   return (
     <div>
       <GameStats id="game-stats">
-          <p>Time Elapsed: {displayTimeElapsed()}</p>
-          <p>Characters Found: {displayCharactersFound()}</p>
-        </GameStats>
+        <p>Time Elapsed: {displayTimeElapsed(timeElapsed)}</p>
+        <p>Characters Found: {displayCharactersFound()}</p>
+      </GameStats>
       <Wrapper className='image-container'>
         <img src={beachScene} alt="a" onClick={(e) => generateBox(e)} />
         <div id="selection-box">
@@ -313,6 +399,15 @@ function App() {
           </ul>
         </div>
       </Wrapper>
+      <Leaderboards id="leaderboards">
+      <h3>Top 10 Players</h3>
+        <div>
+          <p>Name</p>
+          <p>Time</p>
+        </div>
+        <div id="players-scores"></div>
+        <button onClick={(e) => closeLeaderboards(e)}>Close</button>
+      </Leaderboards>
     </div>
   );
 }
