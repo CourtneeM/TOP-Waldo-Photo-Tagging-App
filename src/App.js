@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { initializeApp } from 'firebase/app';
 import { getFirestore } from 'firebase/firestore';
 import { getFirebaseConfig } from './firebase-config';
@@ -89,25 +89,53 @@ const Wrapper = styled.div`
     box-shadow: 0 4px 10px 2px #000;
   }
 `;
+const GameStats = styled.div`
+  display: flex;
+  gap: 20px;
+  width: fit-content;
+  margin: 0 auto;
+  padding: 5px 20px;
+  background-color: #eee;
+  border: 2px solid #000;
+
+  p:first-child {
+    padding-right: 20px;
+    border-right: 1px solid #ccc;
+  }
+`;
 
 function App() {
-  const characters = {
-    waldo: {
-      found: false,
-      coordinates: [640, 450]
-    },
-    wizard: {
-      found: false,
-      coordinates: [755, 450]
-    },
-    wanda: {
-      found: false,
-      coordinates: [785, 735]
-    },
-    odlaw: {
-      found: false,
-      coordinates: [290, 455]
-    },
+  const [timeElapsed, setTimeElapsed] = useState(0);
+  const [characterStatus, setCharacterStatus] = useState({
+    waldo: false,
+    wizard: false,
+    wanda: false,
+    odlaw: false,
+  });
+  const [gameOver, setGameOver] = useState(false);
+
+  useEffect(() => {
+    if (!gameOver) {
+      const gameTimer = setInterval(() => setTimeElapsed(timeElapsed + 1), 1000);
+      return () => clearInterval(gameTimer);
+    }
+  });
+  useEffect(() => {
+    const checkIfGameover = () => {
+      if (Object.keys(characterStatus).every((character) => characterStatus[character])) {
+        console.log('gameover');
+        setGameOver(true);
+      }
+    }
+
+    checkIfGameover();
+  }, [characterStatus])
+
+  const characterCoordinates = {
+    waldo: [640, 450],
+    wizard: [755, 450],
+    wanda: [785, 735],
+    odlaw: [290, 455],
   }
 
   const generateBox = (e) => {
@@ -117,7 +145,7 @@ function App() {
     selectionBox.style.left = `${e.nativeEvent.offsetX - 30}px`;
   }
   const checkAnswer = (e) => {
-    const [correctX, correctY] = characters[e.target.textContent.toLowerCase()].coordinates;
+    const [correctX, correctY] = characterCoordinates[e.target.textContent.toLowerCase()];
     const imageContainer = document.querySelector('.image-container');
     const selectionBox = document.getElementById('selection-box');
 
@@ -169,8 +197,11 @@ function App() {
       setTimeout(() => correctBox.removeChild(correctChoiceMessage), 2000);
 
       markOutCorrectChoice();
-    }
 
+      const characterStatusCopy = {...characterStatus};
+      characterStatusCopy[e.target.textContent.toLowerCase()] = true;
+      setCharacterStatus(characterStatusCopy);
+    }
     const wrongChoice = (e) => {
       const generateWrongChoiceMessage = () => {
         const wrongChoiceMessage = document.createElement('p');
@@ -198,6 +229,21 @@ function App() {
 
     selectionBox.style.display = 'none';
   }
+  const displayTimeElapsed = () => {
+    let totalMinutes;
+    let totalSeconds;
+
+    if (timeElapsed < 60) {
+      totalSeconds = Number(timeElapsed);
+    } else {
+      [totalMinutes, totalSeconds] = String((Number(timeElapsed) / 60).toFixed(1)).split('.');
+    }
+
+    const minutesMessage = totalMinutes > '1' ? `${totalMinutes} minutes, ` : totalMinutes === '1' ? `${totalMinutes} minute, ` : null;
+    const secondsMessage = totalSeconds > '1' ? `${totalSeconds} seconds` : totalSeconds === '1' ? `${totalSeconds} second` : '0 seconds';
+
+    return `${minutesMessage ? minutesMessage + secondsMessage : secondsMessage}`
+  }
   const hideSelectionBox = (() => {
     document.addEventListener('keydown', (e) => {
       const selectionBox = document.getElementById('selection-box');
@@ -207,6 +253,10 @@ function App() {
 
   return (
     <div>
+      <GameStats id="game-stats">
+          <p>Time Elapsed: {displayTimeElapsed()}</p>
+          <p>Characters Found: {Object.values(characterStatus).filter((foundStatus) => foundStatus).length}/{Object.values(characterStatus).length}</p>
+        </GameStats>
       <Wrapper className='image-container'>
         <img src={beachScene} alt="a" onClick={(e) => generateBox(e)} />
         <div id="selection-box">
