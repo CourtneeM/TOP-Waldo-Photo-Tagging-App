@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { initializeApp } from 'firebase/app';
-import { getFirestore } from 'firebase/firestore';
+import { collection, doc, getDoc, getFirestore, updateDoc } from 'firebase/firestore';
 import { getFirebaseConfig } from './firebase-config';
 import styled from 'styled-components';
 
@@ -194,20 +194,29 @@ function App() {
     wanda: false,
     odlaw: false,
   });
+  const [characterCoordinates, setCharacterCoordinates] = useState({
+    waldo: [640, 450],
+    wizard: [755, 450],
+    wanda: [785, 735],
+    odlaw: [290, 455],
+  })
   const [gameOver, setGameOver] = useState(false);
-  const [leaderboards, setLeaderboards] = useState([
-    { name: 'Bob', time: { hours: 0, minutes: 0, seconds: 7 }},
-    { name: 'Tim', time: { hours: 0, minutes: 0, seconds: 10 }},
-    { name: 'Mary', time: { hours: 0, minutes: 0, seconds: 15 }},
-    { name: 'Jean', time: { hours: 0, minutes: 0, seconds: 16 }},
-    { name: 'Shaun', time: { hours: 0, minutes: 0, seconds: 20 }},
-    { name: 'Robert', time: { hours: 0, minutes: 1, seconds: 0 }},
-    { name: 'Mike', time: { hours: 0, minutes: 1, seconds: 20 }},
-    { name: 'Steve', time: { hours: 1, minutes: 0, seconds: 55 }},
-  ]);
+  const [leaderboards, setLeaderboards] = useState([]);
   const [newHighScoreIndex, setNewHighScoreIndex] = useState(null);
   const [highScoreName, setHighScoreName] = useState('Anonymous');
 
+  useEffect(() => {
+    const getData = async () => {
+      const docRef = doc(db, 'photo data', 'beach-scene');
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setLeaderboards(docSnap.data().leaderboards);
+        setCharacterCoordinates(docSnap.data().characterCoordinates);
+      }
+    }
+
+    getData();
+  }, [])
   useEffect(() => {
     if (!gameOver) {
       const gameTimer = setInterval(() => {
@@ -246,6 +255,12 @@ function App() {
     const isNewHighScore = () => {
       let newScore = false;
 
+      if (leaderboards.length === 0) {
+        setNewHighScoreIndex(0);
+        newScore = true;
+        return newScore;
+      }
+
       leaderboards.forEach(({_, time}, i) => {
         if (newScore) return;
         const statTotalTimeSeconds = (time.hours * 3600) + (time.minutes * 60) + time.seconds;
@@ -255,6 +270,12 @@ function App() {
         setNewHighScoreIndex(i);
       });
 
+      if (leaderboards.length < 10) {
+        setNewHighScoreIndex(leaderboards.length);
+        newScore = true;
+      }
+
+      console.log(newScore);
       return newScore;
     }
     const resetGame = () => {
@@ -266,6 +287,7 @@ function App() {
       setGameOver(false);
 
       document.getElementById('game-over-message').style.display = 'none';
+      document.getElementById('reset-btn').style.display = 'none';
       document.getElementById('name-input-container').style.display = 'none';
       document.getElementById('leaderboards').style.display = 'none';
 
@@ -307,22 +329,21 @@ function App() {
       } else {
         displayLeaderboards();
       }
-
     }
   }, [gameOver]);
-
   useEffect(() => {
     if (document.getElementById('leaderboards').style.display === 'block') return;
 
+    const writeData = async () => {
+      const docRef = doc(db, 'photo data', 'beach-scene');
+      await updateDoc(docRef, {
+        leaderboards: leaderboards
+      })
+    }
+
+    if (newHighScoreIndex !== null) writeData();
     if (gameOver) displayLeaderboards();
   }, [leaderboards]);
-
-  const characterCoordinates = {
-    waldo: [640, 450],
-    wizard: [755, 450],
-    wanda: [785, 735],
-    odlaw: [290, 455],
-  }
 
   const gameSetup = () => {
     const image = document.createElement('img');
@@ -447,7 +468,8 @@ function App() {
   }
   const updateLeaderboard = () => {
     const leaderboardsCopy = [...leaderboards];
-    leaderboardsCopy.pop();
+
+    if (leaderboardsCopy.length >= 10) leaderboardsCopy.pop();
 
     leaderboardsCopy.splice(newHighScoreIndex, 0, { name: highScoreName, time: { ...timeElapsed } });
 
