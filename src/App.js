@@ -109,6 +109,37 @@ const GameStats = styled.div`
     border-left: 1px solid #ccc;
   }
 `;
+const NameInput = styled.div`
+  display: none;
+  position: absolute;
+  top: 175px;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 400px;
+  margin: 0 auto 40px;
+  padding: 20px;
+  text-align: center;
+  background-color: #fff;
+  border: 1px solid #000;
+  border-radius: 10px;
+
+  p:first-child { margin-bottom: 4px; }
+  p:nth-child(2) { margin-bottom: 10px; }
+
+  input {
+    width: 50%;
+    margin-bottom: 8px;
+    padding: 5px 10px;
+  }
+
+  button {
+    display: block;
+    width: 50%;
+    margin: 0 auto;
+    padding: 5px 25px;
+    cursor: pointer;
+  }
+`;
 const Leaderboards = styled.div`
   display: none;
   position: absolute;
@@ -153,9 +184,9 @@ const Leaderboards = styled.div`
 
 function App() {
   const [timeElapsed, setTimeElapsed] = useState({
-    seconds: 0,
-    minutes: 0,
     hours: 0,
+    minutes: 0,
+    seconds: 0,
   });
   const [characterStatus, setCharacterStatus] = useState({
     waldo: false,
@@ -173,7 +204,9 @@ function App() {
     { name: 'Robert', time: { hours: 0, minutes: 1, seconds: 0 }},
     { name: 'Mike', time: { hours: 0, minutes: 1, seconds: 20 }},
     { name: 'Steve', time: { hours: 1, minutes: 0, seconds: 55 }},
-  ])
+  ]);
+  const [newHighScoreIndex, setNewHighScoreIndex] = useState(null);
+  const [highScoreName, setHighScoreName] = useState('Anonymous');
 
   useEffect(() => {
     if (!gameOver) {
@@ -197,9 +230,33 @@ function App() {
     }
   });
   useEffect(() => {
+    const checkIfGameover = () => {
+      if (Object.keys(characterStatus).every((character) => characterStatus[character])) {
+        if (gameOver) return;
+        setGameOver(true);
+      }
+    }
+    checkIfGameover();
+  }, [characterStatus]);
+
+  useEffect(() => {
     const gameOverEvent = () => {
       const imageContainer = document.querySelector('img');
       imageContainer.style.pointerEvents = 'none';
+    }
+    const isNewHighScore = () => {
+      let newScore = false;
+
+      leaderboards.forEach(({_, time}, i) => {
+        if (newScore) return;
+        const statTotalTimeSeconds = (time.hours * 3600) + (time.minutes * 60) + time.seconds;
+        const timeElaspedTotalTimeSeconds = (timeElapsed.hours * 3600) + (timeElapsed.minutes * 60) + timeElapsed.seconds;
+
+        newScore = timeElaspedTotalTimeSeconds < statTotalTimeSeconds;
+        setNewHighScoreIndex(i);
+      });
+
+      return newScore;
     }
     const resetGame = () => {
       const characterStatusCopy = { ...characterStatus };
@@ -209,6 +266,7 @@ function App() {
       setCharacterStatus(characterStatusCopy);
       setGameOver(false);
     }
+
     const displayGameOverMessage = () => {
       const gameStatsContainer = document.getElementById('game-stats');
       const gameOverMessage = document.createElement('p');
@@ -223,37 +281,29 @@ function App() {
 
       [gameOverMessage, resetBtn].forEach((el) => gameStatsContainer.appendChild(el));
     }
-    const displayLeaderboards = () => {
-      const leaderboardsContainer = document.getElementById('leaderboards');
-      const playersScoresContainer = document.getElementById('players-scores');
-      
-      leaderboardsContainer.style.display = 'block';
-      leaderboards.forEach((stat) => {
-        const statContainer = document.createElement('div');
-        const statName = document.createElement('p');
-        const statTime = document.createElement('p');
-
-        statContainer.classList.add('leaderboard-stat-container');
-
-        statName.textContent = stat.name;
-        statTime.textContent = displayTimeElapsed(stat.time);
-
-        [statName, statTime].forEach((el) => statContainer.appendChild(el));
-        playersScoresContainer.appendChild(statContainer);
-      })
+    const displayNameInput = () => {
+      document.getElementById('name-input-container').style.display = 'block';
     }
-    const checkIfGameover = () => {
-      if (Object.keys(characterStatus).every((character) => characterStatus[character])) {
-        if (gameOver) return;
-        setGameOver(true);
-        gameOverEvent();
-        displayGameOverMessage();
+
+    if (gameOver) {
+      if (document.getElementById('game-over-message')) return;
+      gameOverEvent();
+      displayGameOverMessage();
+
+      if (isNewHighScore()) {
+        displayNameInput();
+      } else {
         displayLeaderboards();
       }
-    }
 
-    checkIfGameover();
-  }, [characterStatus])
+    }
+  }, [gameOver]);
+
+  useEffect(() => {
+    if (document.getElementById('leaderboards').style.display === 'block') return;
+
+    if (gameOver) displayLeaderboards();
+  }, [leaderboards])
 
   const characterCoordinates = {
     waldo: [640, 450],
@@ -353,6 +403,15 @@ function App() {
 
     selectionBox.style.display = 'none';
   }
+  const updateLeaderboard = () => {
+    const leaderboardsCopy = [...leaderboards];
+    leaderboardsCopy.pop();
+
+    leaderboardsCopy.splice(newHighScoreIndex, 0, { name: highScoreName, time: { ...timeElapsed } });
+
+    setLeaderboards(leaderboardsCopy);
+  };
+
   const displayTimeElapsed = (time) => {
     const totalHours = time.hours;
     const totalMinutes = time.minutes;
@@ -370,6 +429,31 @@ function App() {
   }
   const displayCharactersFound = () => {
     return `${Object.values(characterStatus).filter((foundStatus) => foundStatus).length}/${Object.values(characterStatus).length}`;
+  }
+  const displayLeaderboards = () => {
+    const leaderboardsContainer = document.getElementById('leaderboards');
+    const playersScoresContainer = document.getElementById('players-scores');
+    
+    leaderboardsContainer.style.display = 'block';
+    leaderboards.forEach((stat) => {
+      const statContainer = document.createElement('div');
+      const statName = document.createElement('p');
+      const statTime = document.createElement('p');
+
+      statContainer.classList.add('leaderboard-stat-container');
+
+      statName.textContent = stat.name;
+      statTime.textContent = displayTimeElapsed(stat.time);
+
+      [statName, statTime].forEach((el) => statContainer.appendChild(el));
+      playersScoresContainer.appendChild(statContainer);
+    })
+  }
+  const closeNameInput = (e) => {
+    e.preventDefault();
+    document.getElementById('name-input-container').style.display = 'none';
+
+    updateLeaderboard();
   }
   const closeLeaderboards = (e) => {
     e.preventDefault();
@@ -399,6 +483,14 @@ function App() {
           </ul>
         </div>
       </Wrapper>
+      <NameInput id="name-input-container">
+        <p>Congratulations!</p>
+        <p>You made it in the top 10 leaderboard.</p>
+        <form>
+          <input type="text" name="name" id="name" placeholder="Name" onChange={(e) => setHighScoreName(e.target.value)} />
+          <button onClick={(e) => closeNameInput(e)}>Submit</button>
+        </form>
+      </NameInput>
       <Leaderboards id="leaderboards">
       <h3>Top 10 Players</h3>
         <div>
