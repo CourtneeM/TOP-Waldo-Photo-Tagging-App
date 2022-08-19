@@ -238,7 +238,6 @@ function App() {
     }
     checkIfGameover();
   }, [characterStatus]);
-
   useEffect(() => {
     const gameOverEvent = () => {
       const imageContainer = document.querySelector('img');
@@ -265,6 +264,19 @@ function App() {
       setTimeElapsed({hours: 0, minutes: 0, seconds: 0});
       setCharacterStatus(characterStatusCopy);
       setGameOver(false);
+
+      document.getElementById('game-over-message').style.display = 'none';
+      document.getElementById('name-input-container').style.display = 'none';
+      document.getElementById('leaderboards').style.display = 'none';
+
+      const imageContainer = document.querySelector('.image-container');
+      imageContainer.style.pointerEvents = 'auto';
+
+      while (imageContainer.firstChild) {
+        imageContainer.removeChild(imageContainer.firstChild);
+      }
+
+      gameSetup();
     }
 
     const displayGameOverMessage = () => {
@@ -275,9 +287,9 @@ function App() {
       gameOverMessage.id = 'game-over-message';
       gameOverMessage.textContent = 'You found everyone, congrats!';
       
-      // resetBtn.id = 'reset-btn';
-      // resetBtn.textContent = 'Reset';
-      // resetBtn.addEventListener('click', resetGame);
+      resetBtn.id = 'reset-btn';
+      resetBtn.textContent = 'Reset';
+      resetBtn.addEventListener('click', resetGame);
 
       [gameOverMessage, resetBtn].forEach((el) => gameStatsContainer.appendChild(el));
     }
@@ -303,7 +315,7 @@ function App() {
     if (document.getElementById('leaderboards').style.display === 'block') return;
 
     if (gameOver) displayLeaderboards();
-  }, [leaderboards])
+  }, [leaderboards]);
 
   const characterCoordinates = {
     waldo: [640, 450],
@@ -312,11 +324,41 @@ function App() {
     odlaw: [290, 455],
   }
 
+  const gameSetup = () => {
+    const image = document.createElement('img');
+    image.src = beachScene;
+    image.alt = "game scene";
+    image.addEventListener('click', (e) =>  generateBox(e));
+
+    const selectionBox = document.createElement('div');
+    selectionBox.id = 'selection-box';
+
+    const ul = document.createElement('ul');
+    Object.keys(characterCoordinates).forEach((character) => {
+      const characterName = character.split('')[0].toUpperCase() + character.split('').splice(1, character.length).join('');
+      const li = document.createElement('li');
+
+      li.textContent = characterName;
+      li.addEventListener('click', (e) => checkAnswer(e));
+
+      ul.appendChild(li);
+    });
+
+    selectionBox.appendChild(ul);
+
+    [image, selectionBox].forEach((el) => document.querySelector('.image-container').appendChild(el));
+  }
+
   const generateBox = (e) => {
     const selectionBox = document.getElementById('selection-box');
     selectionBox.style.display = 'block';
-    selectionBox.style.top = `${e.nativeEvent.offsetY - 30}px`;
-    selectionBox.style.left = `${e.nativeEvent.offsetX - 30}px`;
+    if (e.nativeEvent) {
+      selectionBox.style.top = `${(e.nativeEvent.offsetY) - 30}px`;
+      selectionBox.style.left = `${(e.nativeEvent.offsetX) - 30}px`;
+    } else {
+      selectionBox.style.top = `${(e.offsetY) - 30}px`;
+      selectionBox.style.left = `${(e.offsetX) - 30}px`;
+    }
   }
   const checkAnswer = (e) => {
     const [correctX, correctY] = characterCoordinates[e.target.textContent.toLowerCase()];
@@ -502,6 +544,7 @@ function App() {
       </Leaderboards>
     </div>
   );
+
 }
 
 export default App;
