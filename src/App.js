@@ -194,16 +194,12 @@ function App() {
     wanda: false,
     odlaw: false,
   });
-  const [characterCoordinates, setCharacterCoordinates] = useState({
-    waldo: [640, 450],
-    wizard: [755, 450],
-    wanda: [785, 735],
-    odlaw: [290, 455],
-  })
+  const [characterCoordinates, setCharacterCoordinates] = useState({})
   const [gameOver, setGameOver] = useState(false);
   const [leaderboards, setLeaderboards] = useState([]);
   const [newHighScoreIndex, setNewHighScoreIndex] = useState(null);
   const [highScoreName, setHighScoreName] = useState('Anonymous');
+  const [round, setRound] = useState(1);
 
   useEffect(() => {
     const getData = async () => {
@@ -245,6 +241,12 @@ function App() {
         setGameOver(true);
       }
     }
+
+    if (!document.querySelector('.image-container').firstChild) gameSetup();
+    if (round > 1 && document.querySelector('.image-container').firstChild) {
+      [...document.querySelectorAll('.image-container ul li')].forEach((li) => li.addEventListener('click', (e) => checkAnswer(e)));
+    }
+
     checkIfGameover();
   }, [characterStatus]);
   useEffect(() => {
@@ -270,24 +272,30 @@ function App() {
         setNewHighScoreIndex(i);
       });
 
-      if (leaderboards.length < 10) {
+      if (leaderboards.length < 10 && !newScore) {
         setNewHighScoreIndex(leaderboards.length);
         newScore = true;
       }
 
-      console.log(newScore);
       return newScore;
     }
     const resetGame = () => {
-      const characterStatusCopy = { ...characterStatus };
-      Object.keys(characterStatusCopy).forEach((key) => characterStatusCopy[key] = false);
-
+      setCharacterStatus({
+        waldo: false,
+        wizard: false,
+        wanda: false,
+        odlaw: false,
+      });
       setTimeElapsed({hours: 0, minutes: 0, seconds: 0});
-      setCharacterStatus(characterStatusCopy);
       setGameOver(false);
+      setNewHighScoreIndex(null);
+      setHighScoreName('Anonymous');
+      setRound(round + 1);
 
-      document.getElementById('game-over-message').style.display = 'none';
-      document.getElementById('reset-btn').style.display = 'none';
+
+      [document.getElementById('game-over-message'), document.getElementById('reset-btn')].forEach((el) => {
+        document.getElementById('game-stats').removeChild(el);
+      })
       document.getElementById('name-input-container').style.display = 'none';
       document.getElementById('leaderboards').style.display = 'none';
 
@@ -297,8 +305,6 @@ function App() {
       while (imageContainer.firstChild) {
         imageContainer.removeChild(imageContainer.firstChild);
       }
-
-      gameSetup();
     }
 
     const displayGameOverMessage = () => {
@@ -320,14 +326,14 @@ function App() {
     }
 
     if (gameOver) {
-      if (document.getElementById('game-over-message')) return;
+      if (document.getElementById('game-over-message') && document.getElementById('game-over-message').style.display === 'block') return;
       gameOverEvent();
       displayGameOverMessage();
 
       if (isNewHighScore()) {
         displayNameInput();
       } else {
-        displayLeaderboards();
+        round > 1 ? document.getElementById('leaderboards').style.display = 'block' : displayLeaderboards();
       }
     }
   }, [gameOver]);
@@ -342,7 +348,13 @@ function App() {
     }
 
     if (newHighScoreIndex !== null) writeData();
-    if (gameOver) displayLeaderboards();
+    if (gameOver) {
+      const playersScoresContainer = document.getElementById('players-scores');
+      while(playersScoresContainer.firstChild) {
+        playersScoresContainer.removeChild(playersScoresContainer.firstChild);
+      }
+      displayLeaderboards();
+    }
   }, [leaderboards]);
 
   const gameSetup = () => {
@@ -360,7 +372,6 @@ function App() {
       const li = document.createElement('li');
 
       li.textContent = characterName;
-      li.addEventListener('click', (e) => checkAnswer(e));
 
       ul.appendChild(li);
     });
@@ -372,6 +383,7 @@ function App() {
 
   const generateBox = (e) => {
     const selectionBox = document.getElementById('selection-box');
+
     selectionBox.style.display = 'block';
     if (e.nativeEvent) {
       selectionBox.style.top = `${(e.nativeEvent.offsetY) - 30}px`;
@@ -395,6 +407,8 @@ function App() {
       return [minOffsetX, maxOffsetX, minOffsetY, maxOffsetY]; 
     }
     const correctChoice = () => {
+      if ([...document.querySelectorAll('.correct-selection-box')].length !== Object.keys(characterStatus).filter((key) => characterStatus[key]).length) return;
+      
       const generateCorrectBox = () => {
         const correctBox = document.createElement('div');
         correctBox.classList.add('correct-selection-box');
@@ -439,7 +453,8 @@ function App() {
       characterStatusCopy[e.target.textContent.toLowerCase()] = true;
       setCharacterStatus(characterStatusCopy);
     }
-    const wrongChoice = (e) => {
+    const wrongChoice = () => {
+      console.log(characterStatus);
       const generateWrongChoiceMessage = () => {
         const wrongChoiceMessage = document.createElement('p');
         wrongChoiceMessage.classList.add('wrong-choice-float');
@@ -461,7 +476,7 @@ function App() {
     if ((minOffsetX < correctX && correctX < maxOffsetX) && (minOffsetY < correctY && correctY < maxOffsetY)) {
       correctChoice();
     } else {
-      wrongChoice(e);
+      wrongChoice();
     }
 
     selectionBox.style.display = 'none';
@@ -551,7 +566,7 @@ function App() {
         <p>Congratulations!</p>
         <p>You made it in the top 10 leaderboard.</p>
         <form>
-          <input type="text" name="name" id="name" placeholder="Name" onChange={(e) => setHighScoreName(e.target.value)} />
+          <input type="text" name="name" id="name" value={highScoreName} placeholder="Name" onChange={(e) => setHighScoreName(e.target.value)} />
           <button onClick={(e) => closeNameInput(e)}>Submit</button>
         </form>
       </NameInput>
