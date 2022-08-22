@@ -3,6 +3,7 @@ import { initializeApp } from 'firebase/app';
 import { doc, getDoc, getFirestore, updateDoc } from 'firebase/firestore';
 import { getDownloadURL, getStorage, ref } from 'firebase/storage';
 import { getFirebaseConfig } from './firebase-config';
+
 import styled from 'styled-components';
 
 const app = initializeApp(getFirebaseConfig());
