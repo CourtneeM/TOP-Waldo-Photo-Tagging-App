@@ -1,13 +1,13 @@
 import { useEffect, useState } from 'react';
 import { initializeApp } from 'firebase/app';
-import { collection, doc, getDoc, getFirestore, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, getFirestore, updateDoc } from 'firebase/firestore';
+import { getDownloadURL, getStorage, ref } from 'firebase/storage';
 import { getFirebaseConfig } from './firebase-config';
 import styled from 'styled-components';
 
-import beachScene from './images/waldo-beach-scene.avif';
-
 const app = initializeApp(getFirebaseConfig());
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 const Wrapper = styled.div`
   position: relative;
@@ -200,19 +200,28 @@ function App() {
   const [newHighScoreIndex, setNewHighScoreIndex] = useState(null);
   const [highScoreName, setHighScoreName] = useState('Anonymous');
   const [round, setRound] = useState(1);
+  const [sceneImage, setSceneImage] = useState(null);
 
   useEffect(() => {
     const getData = async () => {
       const docRef = doc(db, 'photo data', 'beach-scene');
       const docSnap = await getDoc(docRef);
+
       if (docSnap.exists()) {
         setLeaderboards(docSnap.data().leaderboards);
         setCharacterCoordinates(docSnap.data().characterCoordinates);
+
+        if (!sceneImage) {
+          const imageRef = await getDownloadURL(ref(storage, docSnap.data().imageRef));
+          setSceneImage(imageRef);
+          const img = document.querySelector('.image-container img');
+          img.src = imageRef;
+        }
       }
     }
 
     getData();
-  }, [])
+  }, [sceneImage]);
   useEffect(() => {
     if (!gameOver) {
       const gameTimer = setInterval(() => {
@@ -359,7 +368,7 @@ function App() {
 
   const gameSetup = () => {
     const image = document.createElement('img');
-    image.src = beachScene;
+    image.src = sceneImage;
     image.alt = "game scene";
     image.addEventListener('click', (e) =>  generateBox(e));
 
@@ -552,7 +561,7 @@ function App() {
         <p>Characters Found: {displayCharactersFound()}</p>
       </GameStats>
       <Wrapper className='image-container'>
-        <img src={beachScene} alt="a" onClick={(e) => generateBox(e)} />
+        <img src='' alt="game scene" onClick={(e) => generateBox(e)} />
         <div id="selection-box">
           <ul>
             <li onClick={(e) => checkAnswer(e)}>Waldo</li>
